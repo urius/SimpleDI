@@ -9,7 +9,6 @@ namespace SimpleDI
         public static DefaultBindRegistration<T> Bind<T>()
             where T : new()
         {
-            var bindData = BindData.Instance;
             var bindName = TypeOf<T>.Name;
 
             var unbindResult = Unbind<T>();
@@ -20,7 +19,7 @@ namespace SimpleDI
             }
 
             var bindInfo = new DefaultBindingInformation(() => new T());
-            bindData.Set(bindName, bindInfo);
+            BindData.Instance.Set(bindName, bindInfo);
 
             return new DefaultBindRegistration<T>();
         }
