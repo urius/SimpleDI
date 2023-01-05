@@ -1,19 +1,54 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace SimpleDI
 {
-    public class BindData
+    internal class BindData
     {
+        private class SingleBindingData
+        {
+            public LinkedList<string> Aliases = new LinkedList<string>();
+            public BindingInformationBase BindingInformation;
+        }
+
         public static readonly BindData Instance = new BindData();
 
         private readonly Dictionary<string, string> _bindingNameByBindAsName = new Dictionary<string, string>();
-        private readonly Dictionary<string, BindingInformationBase> _data = new Dictionary<string, BindingInformationBase>();
+        private readonly Dictionary<string, SingleBindingData> _data = new Dictionary<string, SingleBindingData>();
 
-        public void SetBindingAlias(string bindingName, string bindingAlias)
+        private BindData()
         {
-            _bindingNameByBindAsName[bindingAlias] = bindingName;
+
+        }
+
+        public void AddBindingAlias(string bindingName, string bindingAlias)
+        {
+            if (_bindingNameByBindAsName.ContainsKey(bindingAlias) == false)
+            {
+                _bindingNameByBindAsName[bindingAlias] = bindingName;
+                _data[bindingName].Aliases.AddLast(bindingAlias);
+            }
+            else
+            {
+                throw new InvalidOperationException($"{nameof(AddBindingAlias)}: Can't set binding alias {bindingAlias} for {bindingName} because it's already binded");
+            }
+        }
+
+        public bool RemoveBindingAlias(string bindingAlias)
+        {
+            if (_bindingNameByBindAsName.TryGetValue(bindingAlias, out var bindingName))
+            {
+                var singleBindingData = _data[bindingName];
+                singleBindingData.Aliases.Remove(bindingAlias);
+                _bindingNameByBindAsName.Remove(bindingAlias);
+
+                if (singleBindingData.Aliases.Count <= 0)
+                {
+                    _data.Remove(bindingName);
+                }
+            }
+
+            return bindingName != null;
         }
 
         public string GetBindingNameByAliasName(string bindingAliasName)
@@ -32,10 +67,7 @@ namespace SimpleDI
 
             if (containsBindingData)
             {
-                var aliasesToUnbind = _bindingNameByBindAsName
-                    .Where(kvp => kvp.Value == bindingName)
-                    .Select(kvp => kvp.Key)
-                    .ToArray();
+                var aliasesToUnbind = _data[bindingName].Aliases;
 
                 foreach (var alias in aliasesToUnbind)
                 {
@@ -48,16 +80,21 @@ namespace SimpleDI
             return containsBindingData;
         }
 
-        public void Set(string bindingName, BindingInformationBase data)
+        public void SetBindingInformation(string bindingName, BindingInformationBase data)
         {
-            _data[bindingName] = data;
+            if (_data.ContainsKey(bindingName) == false)
+            {
+                _data[bindingName] = new SingleBindingData();
+            }
+
+            _data[bindingName].BindingInformation = data;
         }
 
         public BindingInformationBase Get(string bindingName)
         {
             if (_data.TryGetValue(bindingName, out var result))
             {
-                return result;
+                return result.BindingInformation;
             }
 
             return null;
@@ -72,6 +109,16 @@ namespace SimpleDI
             }
 
             return null;
+        }
+
+        public bool HasBinding<T>()
+        {
+            return _data.ContainsKey(TypeOf<T>.Name);
+        }
+
+        public bool HasBindingTo<T>()
+        {
+            return _bindingNameByBindAsName.ContainsKey(TypeOf<T>.Name);
         }
     }
 
