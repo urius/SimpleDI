@@ -231,6 +231,11 @@ namespace SimpleDI
             var bindInfo = BindData.Get(BindingName);
             BindData.SetBindingInformation(BindingName, new DefaultBindingInformation(() => method()));
         }
+
+        public void FromInstance(T instance)
+        {
+            AsSingleton().FromInstance(instance);
+        }
     }
 
     public class SingletonBindRegistration<T> : BindRegistrationBase<T>
